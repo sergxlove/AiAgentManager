@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="AiAgentManager.Core/AiAgentManager.Core.csproj" />
+  <Project Path="AiAgentManager.DataBase.Sqlite/AiAgentManager.DataBase.Sqlite.csproj" />
+  <Project Path="AiAgentManager/AiAgentManager.csproj" />
+</Solution>
