@@ -9,5 +9,6 @@ namespace AiAgentManager.DataBase.Sqlite.Interfaces
         Task<int> DeleteAsync(string name, CancellationToken token);
         Task<List<SavedAgents>> GetAllAsync(CancellationToken token);
         Task<int> RenameUpdateAsync(string oldName, string newName, CancellationToken token);
+        Task<SavedAgents?> GetByNameAsync(string name, CancellationToken token);
     }
 }

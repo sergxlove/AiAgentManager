@@ -69,6 +69,22 @@ namespace AiAgentManager.DataBase.Sqlite.Repositories
             }
         }
 
+        public async Task<SavedAgents?> GetByNameAsync(string name, CancellationToken token)
+        {
+            try
+            {
+                SavedAgentsEntity? resultEntity = await _context.SavedAgents
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.Name == name, token);
+                if (resultEntity is null) return null;
+                return SavedAgents.Create(resultEntity.Id, resultEntity.Name, resultEntity.PathExe).Value;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public async Task<int> RenameUpdateAsync(string oldName, string newName, CancellationToken token)
         {
             try

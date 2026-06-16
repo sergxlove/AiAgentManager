@@ -1,0 +1,1342 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Агенты - Управление</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e17;
+            color: #e0e0e0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0d1322;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 10px;
+        }
+
+            ::-webkit-scrollbar-thumb:hover {
+                background: #4b5563;
+            }
+
+        .app {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 360px;
+            min-width: 360px;
+            background: #111827;
+            border-right: 1px solid #1f2937;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: #0f1724;
+            border-bottom: 1px solid #1f2937;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+            .sidebar-header h1 {
+                font-size: 20px;
+                font-weight: 700;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+
+        .btn-create {
+            padding: 8px 16px;
+            font-size: 13px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+            .btn-create:hover {
+                transform: scale(1.05);
+            }
+
+        .agents-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .agent-item {
+            display: flex;
+            align-items: center;
+            padding: 14px;
+            margin-bottom: 8px;
+            background: #1a2332;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+            position: relative;
+        }
+
+            .agent-item:hover {
+                background: #243041;
+                transform: translateX(4px);
+            }
+
+            .agent-item.active {
+                border-color: #667eea;
+                background: #1e2a42;
+            }
+
+        .agent-icon {
+            font-size: 28px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .agent-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .agent-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #f0f0f0;
+        }
+
+        .agent-details {
+            display: flex;
+            gap: 10px;
+            margin-top: 4px;
+            font-size: 12px;
+            flex-wrap: wrap;
+        }
+
+        .status-badge {
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+
+            .status-badge.active {
+                background: #0d2818;
+                color: #4ade80;
+            }
+
+            .status-badge.inactive {
+                background: #2d1a1a;
+                color: #f87171;
+            }
+
+        .usage-info {
+            color: #9ca3af;
+            font-size: 11px;
+        }
+
+        .agent-path {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .agent-actions {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+            font-size: 16px;
+            color: #9ca3af;
+        }
+
+            .btn-icon:hover {
+                background: #374151;
+                color: #e5e7eb;
+            }
+
+        .btn-delete:hover {
+            background: #4c1d1d;
+            color: #f87171;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 16px;
+        }
+
+        .empty-hint {
+            font-size: 13px;
+            margin-top: 8px;
+            color: #4b5563;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #0a0e17;
+            overflow: hidden;
+        }
+
+        .welcome-screen {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .welcome-content {
+            text-align: center;
+            color: #6b7280;
+        }
+
+        .welcome-icon {
+            font-size: 80px;
+            display: block;
+            margin-bottom: 20px;
+        }
+
+        .welcome-content h2 {
+            color: #e5e7eb;
+            margin-bottom: 8px;
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-header {
+            padding: 16px 24px;
+            background: #111827;
+            border-bottom: 1px solid #1f2937;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .chat-header-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-agent-icon {
+            font-size: 32px;
+        }
+
+        .chat-agent-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #f0f0f0;
+        }
+
+        .chat-agent-status {
+            font-size: 13px;
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+            .status-dot.running {
+                background: #4ade80;
+                animation: pulse 1.5s infinite;
+            }
+
+            .status-dot.stopped {
+                background: #6b7280;
+            }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-run {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #0d2818;
+            color: #4ade80;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+            .btn-run:hover {
+                background: #1a3a2a;
+                transform: scale(1.05);
+            }
+
+        .btn-stop {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #2d1a1a;
+            color: #f87171;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+            .btn-stop:hover {
+                background: #3d2a2a;
+                transform: scale(1.05);
+            }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 24px;
+            background: #0d1322;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 16px;
+            animation: fadeIn 0.3s ease;
+        }
+
+            .message.user {
+                justify-content: flex-end;
+            }
+
+            .message.agent {
+                justify-content: flex-start;
+            }
+
+            .message.system {
+                justify-content: center;
+            }
+
+                .message.system .message-bubble {
+                    background: #1a2332;
+                    color: #9ca3af;
+                    font-size: 13px;
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 18px;
+            border-radius: 16px;
+            background: #1a2332;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.agent .message-bubble {
+            background: #1e2a42;
+            color: #e5e7eb;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-sender {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            opacity: 0.7;
+        }
+
+        .message-content {
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .message-time {
+            font-size: 11px;
+            margin-top: 6px;
+            opacity: 0.5;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 4px 0;
+        }
+
+            .typing-indicator span {
+                display: inline-block;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #6b7280;
+                animation: typingBounce 1.4s infinite;
+            }
+
+                .typing-indicator span:nth-child(2) {
+                    animation-delay: 0.2s;
+                }
+
+                .typing-indicator span:nth-child(3) {
+                    animation-delay: 0.4s;
+                }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+
+            30% {
+                transform: translateY(-8px);
+            }
+        }
+
+        .message.typing .message-bubble {
+            background: #1a2332;
+            padding: 12px 20px;
+        }
+
+        .chat-input {
+            padding: 16px 24px;
+            background: #111827;
+            border-top: 1px solid #1f2937;
+            display: flex;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+            .chat-input input {
+                flex: 1;
+                padding: 12px 18px;
+                border: 1px solid #1f2937;
+                border-radius: 12px;
+                background: #0d1322;
+                color: #e5e7eb;
+                font-size: 14px;
+                outline: none;
+                transition: border-color 0.3s;
+            }
+
+                .chat-input input:focus {
+                    border-color: #667eea;
+                }
+
+                .chat-input input::placeholder {
+                    color: #4b5563;
+                }
+
+                .chat-input input:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+
+        .btn-send {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+            .btn-send:hover:not(:disabled) {
+                transform: scale(1.05);
+            }
+
+            .btn-send:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+            .modal-overlay.open {
+                display: flex;
+            }
+
+        .modal-content {
+            background: #1a2332;
+            border-radius: 16px;
+            width: 500px;
+            max-width: 92%;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #2d3a4a;
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #1f2937;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+            .modal-header h2 {
+                color: #f0f0f0;
+                font-size: 20px;
+            }
+
+        .btn-close-modal {
+            background: transparent;
+            border: none;
+            color: #6b7280;
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+            .btn-close-modal:hover {
+                color: #f0f0f0;
+            }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+            .form-group:last-child {
+                margin-bottom: 0;
+            }
+
+            .form-group label {
+                display: block;
+                color: #9ca3af;
+                font-size: 13px;
+                font-weight: 500;
+                margin-bottom: 6px;
+            }
+
+            .form-group input {
+                width: 100%;
+                padding: 10px 14px;
+                border: 1px solid #1f2937;
+                border-radius: 8px;
+                background: #0d1322;
+                color: #e5e7eb;
+                font-size: 14px;
+                outline: none;
+                transition: border-color 0.3s;
+            }
+
+                .form-group input:focus {
+                    border-color: #667eea;
+                }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #1f2937;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn-secondary {
+            padding: 10px 20px;
+            border: 1px solid #1f2937;
+            border-radius: 8px;
+            background: transparent;
+            color: #9ca3af;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+            .btn-secondary:hover {
+                background: #1f2937;
+            }
+
+        .btn-primary {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+            .btn-primary:hover {
+                transform: scale(1.05);
+            }
+
+            .btn-primary:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                transform: none;
+            }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 280px;
+                min-width: 280px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .app {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                min-width: 100%;
+                height: 40vh;
+                border-right: none;
+                border-bottom: 1px solid #1f2937;
+            }
+
+            .main-content {
+                height: 60vh;
+            }
+
+            .message-bubble {
+                max-width: 90%;
+            }
+
+            .chat-header {
+                padding: 12px 16px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .chat-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+
+            .chat-input {
+                padding: 12px 16px;
+                flex-wrap: wrap;
+            }
+
+            .btn-send {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .modal-content {
+                width: 95%;
+            }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #1f2937;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 14px 24px;
+            border-radius: 12px;
+            background: #1a2332;
+            border: 1px solid #1f2937;
+            color: #e5e7eb;
+            font-size: 14px;
+            z-index: 2000;
+            animation: slideUp 0.3s ease;
+            max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+            .toast.error {
+                border-color: #f87171;
+                color: #f87171;
+            }
+
+            .toast.success {
+                border-color: #4ade80;
+                color: #4ade80;
+            }
+
+            .toast.info {
+                border-color: #667eea;
+                color: #667eea;
+            }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app" id="app">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>🤖 AI Агенты</h1>
+                <button class="btn-create" onclick="openCreateModal()">
+                    <span>+</span> Новый
+                </button>
+            </div>
+            <div class="agents-list" id="agentsList">
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="welcome-screen" id="welcomeScreen">
+                <div class="welcome-content">
+                    <span class="welcome-icon">🤖</span>
+                    <h2>Выберите агента</h2>
+                    <p>Выберите существующего агента из списка слева или создайте нового</p>
+                </div>
+            </div>
+            <div class="chat-container" id="chatContainer" style="display:none;">
+                <div class="chat-header">
+                    <div class="chat-header-info">
+                        <span class="chat-agent-icon" id="chatAgentIcon">🤖</span>
+                        <div>
+                            <div class="chat-agent-name" id="chatAgentName">Агент</div>
+                            <div class="chat-agent-status">
+                                <span class="status-dot stopped" id="statusDot"></span>
+                                <span id="statusText">Остановлен</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-actions">
+                        <button class="btn-run" id="btnRun" onclick="startAgent()">
+                            <span>▶</span> Запустить
+                        </button>
+                        <button class="btn-stop" id="btnStop" onclick="stopAgent()" style="display:none;">
+                            <span>⏹</span> Остановить
+                        </button>
+                    </div>
+                </div>
+
+                <div class="messages-container" id="messagesContainer">
+                </div>
+
+                <div class="chat-input">
+                    <input type="text"
+                           id="chatInput"
+                           placeholder="Введите запрос..."
+                           onkeydown="if(event.key==='Enter') sendMessage()"
+                           disabled />
+                    <button class="btn-send" id="btnSend" onclick="sendMessage()" disabled>
+                        <span>📤</span> Отправить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="createModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Создание нового агента</h2>
+                <button class="btn-close-modal" onclick="closeCreateModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Название агента</label>
+                    <input type="text" id="agentNameInput" placeholder="Например: Помощник по БД" />
+                </div>
+                <div class="form-group">
+                    <label>Путь к .exe файлу</label>
+                    <input type="text" id="agentPathInput" placeholder="C:\Users\...\AiAgent.exe" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeCreateModal()">Отмена</button>
+                <button class="btn-primary" id="btnCreateAgent" onclick="createAgent()">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // 1. КОНФИГУРАЦИЯ
+        // ============================================================
+
+        // !!! ЗАМЕНИТЕ НА ВАШ БАЗОВЫЙ URL API !!!
+        const API_BASE = 'http://localhost:5000/api/agents';
+        const SIGNALR_URL = 'http://localhost:5000/agentHub';
+
+        let selectedAgentId = null;
+        let isAgentRunning = false;
+        let connection = null;
+        let pollingInterval = null;
+
+        // ============================================================
+        // 2. API ВЫЗОВЫ
+        // ============================================================
+
+        async function apiGet(endpoint) {
+            const res = await fetch(`${API_BASE}${endpoint}`);
+            if (!res.ok) throw new Error(await res.text());
+            return res.json();
+        }
+
+        async function apiPost(endpoint, data) {
+            const res = await fetch(`${API_BASE}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!res.ok) throw new Error(await res.text());
+            return res.json();
+        }
+
+        async function apiDelete(endpoint) {
+            const res = await fetch(`${API_BASE}${endpoint}`, {
+                method: 'DELETE'
+            });
+            if (!res.ok) throw new Error(await res.text());
+            return res.json();
+        }
+
+        // ============================================================
+        // 3. УПРАВЛЕНИЕ АГЕНТАМИ
+        // ============================================================
+
+        async function loadAgents() {
+            try {
+                const agents = await apiGet('');
+                renderAgents(agents);
+            } catch (err) {
+                showToast('Ошибка загрузки агентов: ' + err.message, 'error');
+            }
+        }
+
+        function renderAgents(agents) {
+            const container = document.getElementById('agentsList');
+
+            if (!agents || agents.length === 0) {
+                container.innerHTML = `
+                            <div class="empty-state">
+                                <span class="empty-icon">📭</span>
+                                <p>Нет созданных агентов</p>
+                                <p class="empty-hint">Создайте первого агента, нажав кнопку выше</p>
+                            </div>
+                        `;
+                return;
+            }
+
+            container.innerHTML = agents.map(a => `
+                        <div class="agent-item ${selectedAgentId === a.id ? 'active' : ''}"
+                             onclick="selectAgent(${a.id})">
+                            <div class="agent-icon">🤖</div>
+                            <div class="agent-info">
+                                <div class="agent-name">${escapeHtml(a.name)}</div>
+                                <div class="agent-details">
+                                    <span class="status-badge ${a.isActive ? 'active' : 'inactive'}">
+                                        ${a.isActive ? '● Активен' : '○ Неактивен'}
+                                    </span>
+                                    <span class="usage-info">📊 ${a.usageCount || 0} использований</span>
+                                </div>
+                                <div class="agent-path">${escapeHtml(a.exePath)}</div>
+                            </div>
+                            <div class="agent-actions">
+                                <button class="btn-icon" onclick="event.stopPropagation(); selectAgent(${a.id})">💬</button>
+                                <button class="btn-icon btn-delete" onclick="event.stopPropagation(); deleteAgent(${a.id})">🗑️</button>
+                            </div>
+                        </div>
+                    `).join('');
+        }
+
+        async function selectAgent(id) {
+            selectedAgentId = id;
+            messages = [];
+            isAgentRunning = false;
+
+            await loadAgents();
+
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('chatContainer').style.display = 'flex';
+
+            try {
+                const agent = await apiGet(`/${id}`);
+                document.getElementById('chatAgentName').textContent = agent.name;
+                document.getElementById('chatAgentIcon').textContent = '🤖';
+            } catch (err) {
+                showToast('Ошибка загрузки агента: ' + err.message, 'error');
+            }
+
+            updateChatStatus(false);
+
+            document.getElementById('messagesContainer').innerHTML = `
+                        <div class="message system">
+                            <div class="message-bubble">
+                                ⚙️ Агент выбран. Нажмите "Запустить" для начала работы.
+                            </div>
+                        </div>
+                    `;
+
+            document.getElementById('chatInput').value = '';
+            document.getElementById('chatInput').disabled = true;
+            document.getElementById('btnSend').disabled = true;
+        }
+
+        async function deleteAgent(id) {
+            if (!confirm('Удалить агента?')) return;
+
+            try {
+                await apiDelete(`/${id}`);
+                if (selectedAgentId === id) {
+                    selectedAgentId = null;
+                    document.getElementById('chatContainer').style.display = 'none';
+                    document.getElementById('welcomeScreen').style.display = 'flex';
+                }
+                await loadAgents();
+                showToast('Агент удален', 'success');
+            } catch (err) {
+                showToast('Ошибка удаления: ' + err.message, 'error');
+            }
+        }
+
+        // ============================================================
+        // 4. УПРАВЛЕНИЕ ЧАТОМ
+        // ============================================================
+
+        function updateChatStatus(running) {
+            isAgentRunning = running;
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            const btnRun = document.getElementById('btnRun');
+            const btnStop = document.getElementById('btnStop');
+            const input = document.getElementById('chatInput');
+            const sendBtn = document.getElementById('btnSend');
+
+            if (running) {
+                dot.className = 'status-dot running';
+                text.textContent = 'Работает';
+                btnRun.style.display = 'none';
+                btnStop.style.display = 'flex';
+                input.disabled = false;
+                sendBtn.disabled = false;
+                input.placeholder = 'Введите запрос...';
+            } else {
+                dot.className = 'status-dot stopped';
+                text.textContent = 'Остановлен';
+                btnRun.style.display = 'flex';
+                btnStop.style.display = 'none';
+                input.disabled = true;
+                sendBtn.disabled = true;
+                input.placeholder = 'Сначала запустите агента';
+            }
+        }
+
+        async function startAgent() {
+            if (!selectedAgentId) return;
+
+            try {
+                await apiPost(`/${selectedAgentId}/start`, {});
+                showToast('Агент запущен', 'success');
+                updateChatStatus(true);
+                addSystemMessage('▶ Агент запущен и готов к работе');
+                await connectSignalR();
+            } catch (err) {
+                showToast('Ошибка запуска: ' + err.message, 'error');
+            }
+        }
+
+        async function stopAgent() {
+            if (!selectedAgentId) return;
+
+            try {
+                await apiPost(`/${selectedAgentId}/stop`, {});
+                showToast('Агент остановлен', 'info');
+                updateChatStatus(false);
+                addSystemMessage('⏹ Агент остановлен');
+
+                if (connection) {
+                    await connection.stop();
+                    connection = null;
+                }
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                }
+            } catch (err) {
+                showToast('Ошибка остановки: ' + err.message, 'error');
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+
+            if (!message || !isAgentRunning || !selectedAgentId) return;
+
+            addMessage('user', message);
+            input.value = '';
+            input.disabled = true;
+            document.getElementById('btnSend').disabled = true;
+            showTyping();
+
+            try {
+                await apiPost(`/${selectedAgentId}/command`, { command: message });
+            } catch (err) {
+                hideTyping();
+                showToast('Ошибка отправки: ' + err.message, 'error');
+                addSystemMessage('❌ Ошибка: ' + err.message);
+                input.disabled = false;
+                document.getElementById('btnSend').disabled = false;
+            }
+        }
+
+        // ============================================================
+        // 5. SIGNALR
+        // ============================================================
+
+        async function connectSignalR() {
+            if (connection && connection.state === 'Connected') return;
+
+            try {
+                if (typeof signalR === 'undefined') {
+                    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js');
+                }
+
+                connection = new signalR.HubConnectionBuilder()
+                    .withUrl(SIGNALR_URL)
+                    .withAutomaticReconnect()
+                    .build();
+
+                connection.on('ReceiveMessage', (data) => {
+                    hideTyping();
+                    const sender = data.sender || 'Agent';
+                    const content = data.content || '';
+
+                    if (sender === 'User') return;
+
+                    if (sender === 'System') {
+                        addSystemMessage(content);
+                        return;
+                    }
+
+                    addMessage('agent', content);
+                    document.getElementById('chatInput').disabled = false;
+                    document.getElementById('btnSend').disabled = false;
+                    document.getElementById('chatInput').focus();
+                });
+
+                await connection.start();
+                console.log('SignalR connected');
+                await loadChatHistory();
+
+            } catch (err) {
+                console.error('SignalR error:', err);
+                startPolling();
+            }
+        }
+
+        async function loadChatHistory() {
+            if (!selectedAgentId) return;
+            try {
+                const history = await apiGet(`/${selectedAgentId}/history`);
+                if (history && history.length > 0) {
+                    const container = document.getElementById('messagesContainer');
+                    container.innerHTML = '';
+                    history.forEach(msg => {
+                        if (msg.sender === 'System') {
+                            addSystemMessage(msg.content);
+                        } else {
+                            addMessage(msg.sender.toLowerCase(), msg.content);
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to load history:', err);
+            }
+        }
+
+        // ============================================================
+        // 6. POLLING (fallback)
+        // ============================================================
+
+        function startPolling() {
+            if (pollingInterval) clearInterval(pollingInterval);
+            pollingInterval = setInterval(async () => {
+                if (!selectedAgentId || !isAgentRunning) return;
+                try {
+                    const updates = await apiGet(`/${selectedAgentId}/poll`);
+                    updates.forEach(msg => {
+                        if (msg.sender === 'System') {
+                            addSystemMessage(msg.content);
+                        } else if (msg.sender !== 'User') {
+                            addMessage('agent', msg.content);
+                        }
+                    });
+                } catch (err) { /* ignore */ }
+            }, 2000);
+        }
+
+        // ============================================================
+        // 7. ОТОБРАЖЕНИЕ СООБЩЕНИЙ
+        // ============================================================
+
+        function addMessage(type, content) {
+            const container = document.getElementById('messagesContainer');
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            const senderLabel = type === 'user' ? '👤 Вы' :
+                type === 'agent' ? '🤖 Агент' : '⚙️ Система';
+            const time = new Date().toLocaleTimeString();
+            div.innerHTML = `
+                        <div class="message-bubble">
+                            <div class="message-sender">${senderLabel}</div>
+                            <div class="message-content">${escapeHtml(content)}</div>
+                            <div class="message-time">${time}</div>
+                        </div>
+                    `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function addSystemMessage(content) {
+            const container = document.getElementById('messagesContainer');
+            const div = document.createElement('div');
+            div.className = 'message system';
+            const time = new Date().toLocaleTimeString();
+            div.innerHTML = `
+                        <div class="message-bubble">
+                            <span>${escapeHtml(content)}</span>
+                            <span style="font-size:10px;opacity:0.5;margin-left:8px;">${time}</span>
+                        </div>
+                    `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function showTyping() {
+            hideTyping();
+            const container = document.getElementById('messagesContainer');
+            const div = document.createElement('div');
+            div.className = 'message agent typing';
+            div.id = 'typingIndicator';
+            div.innerHTML = `
+                        <div class="message-bubble">
+                            <div class="typing-indicator">
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>
+                    `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function hideTyping() {
+            const el = document.getElementById('typingIndicator');
+            if (el) el.remove();
+        }
+
+        // ============================================================
+        // 8. МОДАЛЬНОЕ ОКНО
+        // ============================================================
+
+        function openCreateModal() {
+            document.getElementById('createModal').classList.add('open');
+            document.getElementById('agentNameInput').value = '';
+            document.getElementById('agentPathInput').value = '';
+            document.getElementById('agentNameInput').focus();
+        }
+
+        function closeCreateModal() {
+            document.getElementById('createModal').classList.remove('open');
+        }
+
+        async function createAgent() {
+            const name = document.getElementById('agentNameInput').value.trim();
+            const exePath = document.getElementById('agentPathInput').value.trim();
+
+            if (!name || !exePath) {
+                showToast('Заполните название и путь к .exe', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('btnCreateAgent');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Создание...';
+
+            try {
+                await apiPost('', { name, exePath });
+                closeCreateModal();
+                await loadAgents();
+                showToast('Агент создан!', 'success');
+            } catch (err) {
+                showToast('Ошибка: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Создать';
+            }
+        }
+
+        // ============================================================
+        // 9. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+        // ============================================================
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // ============================================================
+        // 10. ЗАПУСК
+        // ============================================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAgents();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeCreateModal();
+        });
+
+        document.getElementById('createModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeCreateModal();
+        });
+    </script>
+</body>
+</html>
