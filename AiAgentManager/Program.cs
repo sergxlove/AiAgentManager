@@ -12,6 +12,7 @@ namespace AiAgentManager
         {
             var builder = WebApplication.CreateBuilder(args);
             IConfigurationSection? sqliteSetting = builder.Configuration.GetSection("SqliteSetting");
+            IConfigurationSection? aspnetSetting = builder.Configuration.GetSection("AspnetSetting");
             builder.Services.AddDbContext<AiAgentManagerDbContext>(options =>
                 options.UseSqlite(sqliteSetting["ConnectionString"]));
             builder.Services.AddScoped<ISavedAgentsRepository, SavedAgentsRepository>();
@@ -25,7 +26,7 @@ namespace AiAgentManager
                           .AllowCredentials();
                 });
             });
-
+            builder.WebHost.UseUrls($"http://localhost:{aspnetSetting["Port"]}");
             var app = builder.Build();
             app.UseStaticFiles();
             app.UseCors("AllowAll");

@@ -80,6 +80,57 @@ namespace AiAgentManager.Endpoints
                 }
             });
 
+            app.MapPost("/api/agents/{name}/start", async ([FromBody] string name, 
+                [FromServices] ISavedAgentsRepository repo, 
+                CancellationToken token) =>
+            {
+                try
+                {
+                    var result = await repo.GetByNameAsync(name, token);
+                    if (result is null)
+                        return Results.BadRequest("no found object");
+                    return Results.Ok(new { message = $"Агент '{result.Name}' запущен" });
+                }
+                catch
+                {
+                    return Results.InternalServerError();
+                }
+            });
+
+            app.MapPost("/api/agents/{name}/stop", async ([FromBody] string name,
+                [FromServices] ISavedAgentsRepository repo,
+                CancellationToken token) =>
+            {
+                try
+                {
+                    var result = await repo.GetByNameAsync(name, token);
+                    if (result is null)
+                        return Results.BadRequest("no found object");
+                    return Results.Ok(new { message = $"Агент '{result.Name}' остановлен" });
+                }
+                catch
+                {
+                    return Results.InternalServerError();
+                }
+            });
+
+            app.MapPost("/api/agents/{name}/command", async ([FromBody] string name,
+                [FromServices] ISavedAgentsRepository repo,
+                CancellationToken token) =>
+            {
+                try
+                {
+                    var result = await repo.GetByNameAsync(name, token);
+                    if (result is null)
+                        return Results.BadRequest("no found object");
+                    return Results.Ok(new { message = $"Агент '{result.Name}' принял команду" });
+                }
+                catch
+                {
+                    return Results.InternalServerError();
+                }
+            });
+
             return app;
         }
     }
