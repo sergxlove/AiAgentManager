@@ -876,37 +876,60 @@
         const API_BASE = 'http://localhost:5000/api/agents';
         const SIGNALR_URL = 'http://localhost:5000/agentHub';
 
-        let selectedAgentId = null;
+        let selectedAgentName = null;
         let isAgentRunning = false;
         let connection = null;
         let pollingInterval = null;
 
         // ============================================================
-        // 2. API ВЫЗОВЫ
+        // 2. API ВЫЗОВЫ (с credentials: 'include')
         // ============================================================
 
-        async function apiGet(endpoint) {
-            const res = await fetch(`${API_BASE}${endpoint}`);
-            if (!res.ok) throw new Error(await res.text());
+        async function apiRequest(method, endpoint, data = null) {
+            const options = {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                credentials: 'include'
+            };
+
+            if (data !== null) {
+                options.body = JSON.stringify(data);
+            }
+
+            const res = await fetch(`${API_BASE}${endpoint}`, options);
+
+            if (!res.ok) {
+                let errorText;
+                try {
+                    const errorData = await res.json();
+                    errorText = errorData.message || errorData.error || res.statusText;
+                } catch {
+                    errorText = await res.text() || res.statusText;
+                }
+                throw new Error(errorText);
+            }
+
+            const contentLength = res.headers.get('content-length');
+            if (contentLength === '0') {
+                return null;
+            }
+
             return res.json();
+        }
+
+        async function apiGet(endpoint) {
+            return apiRequest('GET', endpoint);
         }
 
         async function apiPost(endpoint, data) {
-            const res = await fetch(`${API_BASE}${endpoint}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            if (!res.ok) throw new Error(await res.text());
-            return res.json();
+            return apiRequest('POST', endpoint, data);
         }
 
-        async function apiDelete(endpoint) {
-            const res = await fetch(`${API_BASE}${endpoint}`, {
-                method: 'DELETE'
-            });
-            if (!res.ok) throw new Error(await res.text());
-            return res.json();
+        async function apiDelete(endpoint, data = null) {
+            return apiRequest('DELETE', endpoint, data);
         }
 
         // ============================================================
@@ -927,40 +950,38 @@
 
             if (!agents || agents.length === 0) {
                 container.innerHTML = `
-                            <div class="empty-state">
-                                <span class="empty-icon">📭</span>
-                                <p>Нет созданных агентов</p>
-                                <p class="empty-hint">Создайте первого агента, нажав кнопку выше</p>
-                            </div>
-                        `;
+                                <div class="empty-state">
+                                    <span class="empty-icon">📭</span>
+                                    <p>Нет созданных агентов</p>
+                                    <p class="empty-hint">Создайте первого агента, нажав кнопку выше</p>
+                                </div>
+                            `;
                 return;
             }
 
             container.innerHTML = agents.map(a => `
-                        <div class="agent-item ${selectedAgentId === a.id ? 'active' : ''}"
-                             onclick="selectAgent(${a.id})">
-                            <div class="agent-icon">🤖</div>
-                            <div class="agent-info">
-                                <div class="agent-name">${escapeHtml(a.name)}</div>
-                                <div class="agent-details">
-                                    <span class="status-badge ${a.isActive ? 'active' : 'inactive'}">
-                                        ${a.isActive ? '● Активен' : '○ Неактивен'}
-                                    </span>
-                                    <span class="usage-info">📊 ${a.usageCount || 0} использований</span>
+                            <div class="agent-item ${selectedAgentName === a.name ? 'active' : ''}"
+                                 onclick="selectAgent('${escapeHtml(a.name)}')">
+                                <div class="agent-icon">🤖</div>
+                                <div class="agent-info">
+                                    <div class="agent-name">${escapeHtml(a.name)}</div>
+                                    <div class="agent-details">
+                                        <span class="status-badge active">
+                                            ● Активен
+                                        </span>
+                                    </div>
+                                    <div class="agent-path">${escapeHtml(a.pathExe)}</div>
                                 </div>
-                                <div class="agent-path">${escapeHtml(a.exePath)}</div>
+                                <div class="agent-actions">
+                                    <button class="btn-icon" onclick="event.stopPropagation(); selectAgent('${escapeHtml(a.name)}')">💬</button>
+                                    <button class="btn-icon btn-delete" onclick="event.stopPropagation(); deleteAgent('${escapeHtml(a.name)}')">🗑️</button>
+                                </div>
                             </div>
-                            <div class="agent-actions">
-                                <button class="btn-icon" onclick="event.stopPropagation(); selectAgent(${a.id})">💬</button>
-                                <button class="btn-icon btn-delete" onclick="event.stopPropagation(); deleteAgent(${a.id})">🗑️</button>
-                            </div>
-                        </div>
-                    `).join('');
+                        `).join('');
         }
 
-        async function selectAgent(id) {
-            selectedAgentId = id;
-            messages = [];
+        async function selectAgent(name) {
+            selectedAgentName = name;
             isAgentRunning = false;
 
             await loadAgents();
@@ -969,7 +990,7 @@
             document.getElementById('chatContainer').style.display = 'flex';
 
             try {
-                const agent = await apiGet(`/${id}`);
+                const agent = await apiGet(`/${encodeURIComponent(name)}`);
                 document.getElementById('chatAgentName').textContent = agent.name;
                 document.getElementById('chatAgentIcon').textContent = '🤖';
             } catch (err) {
@@ -979,25 +1000,25 @@
             updateChatStatus(false);
 
             document.getElementById('messagesContainer').innerHTML = `
-                        <div class="message system">
-                            <div class="message-bubble">
-                                ⚙️ Агент выбран. Нажмите "Запустить" для начала работы.
+                            <div class="message system">
+                                <div class="message-bubble">
+                                    ⚙️ Агент выбран. Нажмите "Запустить" для начала работы.
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
 
             document.getElementById('chatInput').value = '';
             document.getElementById('chatInput').disabled = true;
             document.getElementById('btnSend').disabled = true;
         }
 
-        async function deleteAgent(id) {
-            if (!confirm('Удалить агента?')) return;
+        async function deleteAgent(name) {
+            if (!confirm(`Удалить агента "${name}"?`)) return;
 
             try {
-                await apiDelete(`/${id}`);
-                if (selectedAgentId === id) {
-                    selectedAgentId = null;
+                await apiDelete(`/${encodeURIComponent(name)}`, { name: name });
+                if (selectedAgentName === name) {
+                    selectedAgentName = null;
                     document.getElementById('chatContainer').style.display = 'none';
                     document.getElementById('welcomeScreen').style.display = 'flex';
                 }
@@ -1041,10 +1062,10 @@
         }
 
         async function startAgent() {
-            if (!selectedAgentId) return;
+            if (!selectedAgentName) return;
 
             try {
-                await apiPost(`/${selectedAgentId}/start`, {});
+                await apiPost(`/${encodeURIComponent(selectedAgentName)}/start`, { name: selectedAgentName });
                 showToast('Агент запущен', 'success');
                 updateChatStatus(true);
                 addSystemMessage('▶ Агент запущен и готов к работе');
@@ -1055,10 +1076,10 @@
         }
 
         async function stopAgent() {
-            if (!selectedAgentId) return;
+            if (!selectedAgentName) return;
 
             try {
-                await apiPost(`/${selectedAgentId}/stop`, {});
+                await apiPost(`/${encodeURIComponent(selectedAgentName)}/stop`, { name: selectedAgentName });
                 showToast('Агент остановлен', 'info');
                 updateChatStatus(false);
                 addSystemMessage('⏹ Агент остановлен');
@@ -1080,7 +1101,7 @@
             const input = document.getElementById('chatInput');
             const message = input.value.trim();
 
-            if (!message || !isAgentRunning || !selectedAgentId) return;
+            if (!message || !isAgentRunning || !selectedAgentName) return;
 
             addMessage('user', message);
             input.value = '';
@@ -1089,7 +1110,7 @@
             showTyping();
 
             try {
-                await apiPost(`/${selectedAgentId}/command`, { command: message });
+                await apiPost(`/${encodeURIComponent(selectedAgentName)}/command`, { name: selectedAgentName });
             } catch (err) {
                 hideTyping();
                 showToast('Ошибка отправки: ' + err.message, 'error');
@@ -1100,7 +1121,7 @@
         }
 
         // ============================================================
-        // 5. SIGNALR
+        // 5. SIGNALR (если используете)
         // ============================================================
 
         async function connectSignalR() {
@@ -1112,7 +1133,9 @@
                 }
 
                 connection = new signalR.HubConnectionBuilder()
-                    .withUrl(SIGNALR_URL)
+                    .withUrl(SIGNALR_URL, {
+                        withCredentials: true
+                    })
                     .withAutomaticReconnect()
                     .build();
 
@@ -1145,9 +1168,9 @@
         }
 
         async function loadChatHistory() {
-            if (!selectedAgentId) return;
+            if (!selectedAgentName) return;
             try {
-                const history = await apiGet(`/${selectedAgentId}/history`);
+                const history = await apiGet(`/${encodeURIComponent(selectedAgentName)}/history`);
                 if (history && history.length > 0) {
                     const container = document.getElementById('messagesContainer');
                     container.innerHTML = '';
@@ -1171,16 +1194,18 @@
         function startPolling() {
             if (pollingInterval) clearInterval(pollingInterval);
             pollingInterval = setInterval(async () => {
-                if (!selectedAgentId || !isAgentRunning) return;
+                if (!selectedAgentName || !isAgentRunning) return;
                 try {
-                    const updates = await apiGet(`/${selectedAgentId}/poll`);
-                    updates.forEach(msg => {
-                        if (msg.sender === 'System') {
-                            addSystemMessage(msg.content);
-                        } else if (msg.sender !== 'User') {
-                            addMessage('agent', msg.content);
-                        }
-                    });
+                    const updates = await apiGet(`/${encodeURIComponent(selectedAgentName)}/poll`);
+                    if (updates && updates.length > 0) {
+                        updates.forEach(msg => {
+                            if (msg.sender === 'System') {
+                                addSystemMessage(msg.content);
+                            } else if (msg.sender !== 'User') {
+                                addMessage('agent', msg.content);
+                            }
+                        });
+                    }
                 } catch (err) { /* ignore */ }
             }, 2000);
         }
@@ -1197,12 +1222,12 @@
                 type === 'agent' ? '🤖 Агент' : '⚙️ Система';
             const time = new Date().toLocaleTimeString();
             div.innerHTML = `
-                        <div class="message-bubble">
-                            <div class="message-sender">${senderLabel}</div>
-                            <div class="message-content">${escapeHtml(content)}</div>
-                            <div class="message-time">${time}</div>
-                        </div>
-                    `;
+                            <div class="message-bubble">
+                                <div class="message-sender">${senderLabel}</div>
+                                <div class="message-content">${escapeHtml(content)}</div>
+                                <div class="message-time">${time}</div>
+                            </div>
+                        `;
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
         }
@@ -1213,11 +1238,11 @@
             div.className = 'message system';
             const time = new Date().toLocaleTimeString();
             div.innerHTML = `
-                        <div class="message-bubble">
-                            <span>${escapeHtml(content)}</span>
-                            <span style="font-size:10px;opacity:0.5;margin-left:8px;">${time}</span>
-                        </div>
-                    `;
+                            <div class="message-bubble">
+                                <span>${escapeHtml(content)}</span>
+                                <span style="font-size:10px;opacity:0.5;margin-left:8px;">${time}</span>
+                            </div>
+                        `;
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
         }
@@ -1229,12 +1254,12 @@
             div.className = 'message agent typing';
             div.id = 'typingIndicator';
             div.innerHTML = `
-                        <div class="message-bubble">
-                            <div class="typing-indicator">
-                                <span></span><span></span><span></span>
+                            <div class="message-bubble">
+                                <div class="typing-indicator">
+                                    <span></span><span></span><span></span>
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
         }
@@ -1261,9 +1286,9 @@
 
         async function createAgent() {
             const name = document.getElementById('agentNameInput').value.trim();
-            const exePath = document.getElementById('agentPathInput').value.trim();
+            const pathExe = document.getElementById('agentPathInput').value.trim();
 
-            if (!name || !exePath) {
+            if (!name || !pathExe) {
                 showToast('Заполните название и путь к .exe', 'error');
                 return;
             }
@@ -1273,7 +1298,7 @@
             btn.innerHTML = '<span class="spinner"></span> Создание...';
 
             try {
-                await apiPost('', { name, exePath });
+                await apiPost('', { name, pathExe });
                 closeCreateModal();
                 await loadAgents();
                 showToast('Агент создан!', 'success');
