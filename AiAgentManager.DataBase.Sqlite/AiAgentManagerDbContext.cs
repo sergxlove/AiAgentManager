@@ -13,6 +13,7 @@ namespace AiAgentManager.DataBase.Sqlite
         }
 
         public DbSet<SavedAgentsEntity> SavedAgents { get; set; }
+        public DbSet<ChatHistoryEntity> ChatHistories { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -22,6 +23,7 @@ namespace AiAgentManager.DataBase.Sqlite
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.ApplyConfiguration(new SavedAgentsConfiguration());
+            modelBuilder.ApplyConfiguration(new ChatHistoryConfiguration());
             base.OnModelCreating(modelBuilder);
         }
     }

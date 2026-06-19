@@ -16,6 +16,7 @@ namespace AiAgentManager
             builder.Services.AddDbContext<AiAgentManagerDbContext>(options =>
                 options.UseSqlite(sqliteSetting["ConnectionString"]));
             builder.Services.AddScoped<ISavedAgentsRepository, SavedAgentsRepository>();
+            builder.Services.AddScoped<IChatHistoryRepository, ChatHistoryRepository>();
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", policy =>

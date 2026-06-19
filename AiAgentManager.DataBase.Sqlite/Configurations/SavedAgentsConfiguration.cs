@@ -15,6 +15,10 @@ namespace AiAgentManager.DataBase.Sqlite.Configurations
             builder.Property(x => x.PathExe)
                 .IsRequired();
             builder.HasIndex(x => x.Name);
+            builder.HasMany(a => a.ChatHistory)
+                .WithOne(a => a.SavedAgents)
+                .HasForeignKey(a => a.ChatId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
