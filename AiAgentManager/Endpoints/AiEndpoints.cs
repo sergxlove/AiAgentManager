@@ -23,7 +23,7 @@ namespace AiAgentManager.Endpoints
                 }
             });
 
-            app.MapGet("/api/agents/{name}", async ([FromBody]string name, 
+            app.MapGet("/api/agents/{name}", async (string name, 
                 [FromServices] ISavedAgentsRepository repo, 
                 CancellationToken token) =>
             {
@@ -63,7 +63,7 @@ namespace AiAgentManager.Endpoints
                 }
             });
 
-            app.MapDelete("/api/agents/{name}", async ([FromBody] string name,
+            app.MapDelete("/api/agents/{name}", async (string name,
                 [FromServices] ISavedAgentsRepository repo, 
                 CancellationToken token) =>
             {
@@ -80,7 +80,7 @@ namespace AiAgentManager.Endpoints
                 }
             });
 
-            app.MapPost("/api/agents/{name}/start", async ([FromBody] string name, 
+            app.MapPost("/api/agents/{name}/start", async (string name, 
                 [FromServices] ISavedAgentsRepository repo, 
                 CancellationToken token) =>
             {
@@ -97,7 +97,7 @@ namespace AiAgentManager.Endpoints
                 }
             });
 
-            app.MapPost("/api/agents/{name}/stop", async ([FromBody] string name,
+            app.MapPost("/api/agents/{name}/stop", async (string name,
                 [FromServices] ISavedAgentsRepository repo,
                 CancellationToken token) =>
             {
@@ -114,7 +114,7 @@ namespace AiAgentManager.Endpoints
                 }
             });
 
-            app.MapPost("/api/agents/{name}/command", async ([FromBody] string name,
+            app.MapPost("/api/agents/{name}/command", async (string name,
                 [FromServices] ISavedAgentsRepository repo,
                 CancellationToken token) =>
             {
