@@ -31,6 +31,7 @@ namespace AiAgentManager
             var app = builder.Build();
             app.UseStaticFiles();
             app.UseCors("AllowAll");
+            app.MapPageEndpoints();
             app.MapAiEndpoints();
             app.Run();
         }

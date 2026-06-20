@@ -2,6 +2,7 @@
 using AiAgentManager.DataBase.Sqlite.Interfaces;
 using AiAgentManager.Requests;
 using Microsoft.AspNetCore.Mvc;
+using System.Reflection.Metadata.Ecma335;
 
 namespace AiAgentManager.Endpoints
 {
@@ -23,8 +24,8 @@ namespace AiAgentManager.Endpoints
                 }
             });
 
-            app.MapGet("/api/agents/{name}", async (string name, 
-                [FromServices] ISavedAgentsRepository repo, 
+            app.MapGet("/api/agents/{name}", async (string name,
+                [FromServices] ISavedAgentsRepository repo,
                 CancellationToken token) =>
             {
                 try
@@ -41,7 +42,7 @@ namespace AiAgentManager.Endpoints
             });
 
             app.MapPost("/api/agents", async ([FromBody] CreateAgentRequest request,
-                [FromServices] ISavedAgentsRepository repo, 
+                [FromServices] ISavedAgentsRepository repo,
                 CancellationToken token) =>
             {
                 try
@@ -64,7 +65,7 @@ namespace AiAgentManager.Endpoints
             });
 
             app.MapDelete("/api/agents/{name}", async (string name,
-                [FromServices] ISavedAgentsRepository repo, 
+                [FromServices] ISavedAgentsRepository repo,
                 CancellationToken token) =>
             {
                 try
@@ -80,8 +81,8 @@ namespace AiAgentManager.Endpoints
                 }
             });
 
-            app.MapPost("/api/agents/{name}/start", async (string name, 
-                [FromServices] ISavedAgentsRepository repo, 
+            app.MapPost("/api/agents/{name}/start", async (string name,
+                [FromServices] ISavedAgentsRepository repo,
                 CancellationToken token) =>
             {
                 try
@@ -124,6 +125,40 @@ namespace AiAgentManager.Endpoints
                     if (result is null)
                         return Results.BadRequest("no found object");
                     return Results.Ok(new { message = $"Агент '{result.Name}' принял команду" });
+                }
+                catch
+                {
+                    return Results.InternalServerError();
+                }
+            });
+
+            app.MapPost("/api/agents/history", async ([FromBody] GetHistoryRequest request,
+                [FromServices] IChatHistoryRepository repo,
+                CancellationToken token) =>
+            {
+                try
+                {
+                    var result = await repo.GetByPaginationAsync(request.ChatId, 50, request.Offset, token);
+                    if (result is null)
+                        return Results.BadRequest("no found object");
+                    return Results.Ok(result);
+                }
+                catch
+                {
+                    return Results.InternalServerError();
+                }
+            });
+
+            app.MapDelete("/api/agents/history/{chatId:guid}", async (Guid chatId,
+                [FromServices] IChatHistoryRepository repo,
+                CancellationToken token) =>
+            {
+                try
+                {
+                    int resultDelete = await repo.DeleteAsync(chatId, token);
+                    if (resultDelete == 0)
+                        return Results.BadRequest("object no has been deleted");
+                    return Results.Ok();
                 }
                 catch
                 {
