@@ -142,27 +142,7 @@
             margin-top: 4px;
             font-size: 12px;
             flex-wrap: wrap;
-        }
-
-        .status-badge {
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-        }
-
-            .status-badge.active {
-                background: #0d2818;
-                color: #4ade80;
-            }
-
-            .status-badge.inactive {
-                background: #2d1a1a;
-                color: #f87171;
-            }
-
-        .usage-info {
-            color: #9ca3af;
-            font-size: 11px;
+            align-items: center;
         }
 
         .agent-path {
@@ -796,7 +776,7 @@
             position: fixed;
             bottom: 30px;
             right: 30px;
-            padding: 14px 24px;
+            padding: 14px 48px 14px 24px;
             border-radius: 12px;
             background: #1a2332;
             border: 1px solid #1f2937;
@@ -804,9 +784,34 @@
             font-size: 14px;
             z-index: 2000;
             animation: slideUp 0.3s ease;
-            max-width: 400px;
+            max-width: 420px;
+            min-width: 200px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            position: fixed;
+            word-wrap: break-word;
+            line-height: 1.4;
         }
+
+            .toast .toast-close {
+                position: absolute;
+                top: 50%;
+                right: 12px;
+                transform: translateY(-50%);
+                background: transparent;
+                border: none;
+                color: #6b7280;
+                font-size: 18px;
+                cursor: pointer;
+                padding: 4px 8px;
+                border-radius: 4px;
+                transition: all 0.2s;
+                line-height: 1;
+            }
+
+                .toast .toast-close:hover {
+                    color: #e5e7eb;
+                    background: rgba(255, 255, 255, 0.1);
+                }
 
             .toast.error {
                 border-color: #f87171;
@@ -822,6 +827,29 @@
                 border-color: #667eea;
                 color: #667eea;
             }
+
+        .agent-status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+
+            .agent-status-dot.running {
+                background: #4ade80;
+                animation: pulse 1.5s infinite;
+            }
+
+            .agent-status-dot.stopped {
+                background: #6b7280;
+            }
+
+        .agent-status-text {
+            font-size: 11px;
+            color: #9ca3af;
+        }
 
         @keyframes slideUp {
             from {
@@ -839,7 +867,6 @@
 <body>
 
     <div class="app" id="app">
-        <!-- ===== SIDEBAR ===== -->
         <div class="sidebar">
             <div class="sidebar-header">
                 <h1>🤖 AI Агенты</h1>
@@ -851,7 +878,6 @@
             </div>
         </div>
 
-        <!-- ===== MAIN CONTENT ===== -->
         <div class="main-content">
             <div class="welcome-screen" id="welcomeScreen">
                 <div class="welcome-content">
@@ -903,7 +929,6 @@
         </div>
     </div>
 
-    <!-- ===== MODAL ===== -->
     <div class="modal-overlay" id="createModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -928,9 +953,6 @@
     </div>
 
     <script>
-        // ============================================================
-        // 1. КОНФИГУРАЦИЯ
-        // ============================================================
 
         const API_BASE = 'http://localhost:5000/api/agents';
         const SIGNALR_URL = 'http://localhost:5000/agentHub';
@@ -941,6 +963,8 @@
         let connection = null;
         let pollingInterval = null;
 
+        let agentStatuses = new Map();
+
         let historyState = {
             offset: 0,
             limit: 50,
@@ -950,10 +974,6 @@
             hasMore: true,
             chatName: null
         };
-
-        // ============================================================
-        // 2. API ВЫЗОВЫ
-        // ============================================================
 
         async function apiRequest(method, endpoint, data = null) {
             const options = {
@@ -1002,10 +1022,6 @@
             return apiRequest('DELETE', endpoint);
         }
 
-        // ============================================================
-        // 3. УПРАВЛЕНИЕ АГЕНТАМИ
-        // ============================================================
-
         async function loadAgents() {
             try {
                 const agents = await apiGet('');
@@ -1029,29 +1045,47 @@
                 return;
             }
 
-            container.innerHTML = agents.map(a => `
+            container.innerHTML = agents.map(a => {
+                const isRunning = agentStatuses.get(a.name) || false;
+                return `
                             <div class="agent-item ${selectedAgentName === a.name ? 'active' : ''}"
                                  onclick="selectAgent('${escapeHtml(a.name)}')">
                                 <div class="agent-icon">🤖</div>
                                 <div class="agent-info">
                                     <div class="agent-name">${escapeHtml(a.name)}</div>
                                     <div class="agent-details">
-                                        <span class="status-badge active">● Активен</span>
+                                        <span style="display:flex;align-items:center;gap:4px;">
+                                            <span class="agent-status-dot ${isRunning ? 'running' : 'stopped'}"></span>
+                                            <span class="agent-status-text">${isRunning ? 'Запущен' : 'Остановлен'}</span>
+                                        </span>
                                     </div>
                                     <div class="agent-path">${escapeHtml(a.pathExe)}</div>
                                 </div>
                                 <div class="agent-actions">
-                                    <button class="btn-icon" onclick="event.stopPropagation(); selectAgent('${escapeHtml(a.name)}')">💬</button>
                                     <button class="btn-icon btn-delete" onclick="event.stopPropagation(); deleteAgent('${escapeHtml(a.name)}')">🗑️</button>
                                 </div>
                             </div>
-                        `).join('');
+                        `;
+            }).join('');
         }
 
         async function selectAgent(name) {
+
+            if (selectedAgentName) {
+                agentStatuses.set(selectedAgentName, isAgentRunning);
+            }
+
+            if (connection) {
+                try {
+                    await connection.stop();
+                } catch (e) { }
+                connection = null;
+            }
+
             selectedAgentName = name;
-            isAgentRunning = false;
             selectedChatId = null;
+
+            isAgentRunning = agentStatuses.get(name) || false;
 
             historyState = {
                 offset: 0,
@@ -1082,13 +1116,16 @@
                 showToast('Ошибка загрузки агента: ' + err.message, 'error');
             }
 
-            updateChatStatus(false);
+            updateChatStatusUI(isAgentRunning);
 
-            // Очищаем контейнер и показываем приветствие
             const container = document.getElementById('messagesContainer');
             container.innerHTML = '';
 
             await loadHistory();
+
+            if (isAgentRunning) {
+                await connectSignalR();
+            }
         }
 
         async function deleteAgent(name) {
@@ -1096,9 +1133,11 @@
 
             try {
                 await apiDelete(`/${encodeURIComponent(name)}`);
+                agentStatuses.delete(name);
                 if (selectedAgentName === name) {
                     selectedAgentName = null;
                     selectedChatId = null;
+                    isAgentRunning = false;
                     document.getElementById('chatContainer').style.display = 'none';
                     document.getElementById('welcomeScreen').style.display = 'flex';
                 }
@@ -1108,10 +1147,6 @@
                 showToast('Ошибка удаления: ' + err.message, 'error');
             }
         }
-
-        // ============================================================
-        // 4. ИСТОРИЯ
-        // ============================================================
 
         async function loadHistory(loadMore = false) {
             if (!selectedAgentName) return;
@@ -1244,12 +1279,16 @@
         function createMessageElement(msg) {
             const div = document.createElement('div');
 
-            const sender = msg.sender || msg.fromMessage || msg.from || 'Agent';
-            const content = msg.message || msg.content || msg.text || '';
+            const sender = msg.senderMessage || msg.sender || msg.fromMessage || msg.from || 'agent';
+            const content = msg.message || msg.content || msg.text || 'пустое сообщение';
             const timestamp = msg.dateSend || msg.timestamp || msg.createdAt || new Date().toISOString();
 
-            const type = sender.toLowerCase() === 'user' ? 'user' :
-                sender.toLowerCase() === 'system' ? 'system' : 'agent';
+            let type = 'agent';
+            if (sender === 'user' || sender === 'User' || sender === 'USER') {
+                type = 'user';
+            } else if (sender === 'system' || sender === 'System') {
+                type = 'system';
+            }
 
             div.className = `message ${type}`;
 
@@ -1291,10 +1330,6 @@
             }
         }
 
-        // ============================================================
-        // 5. ОЧИСТКА ИСТОРИИ
-        // ============================================================
-
         async function clearHistory() {
             if (!selectedChatId) {
                 showToast('Нет ID для очистки истории', 'error');
@@ -1326,12 +1361,7 @@
             }
         }
 
-        // ============================================================
-        // 6. УПРАВЛЕНИЕ ЧАТОМ
-        // ============================================================
-
-        function updateChatStatus(running) {
-            isAgentRunning = running;
+        function updateChatStatusUI(running) {
             const dot = document.getElementById('statusDot');
             const text = document.getElementById('statusText');
             const btnRun = document.getElementById('btnRun');
@@ -1358,20 +1388,32 @@
             }
         }
 
-        // ============================================================
-        // 7. ЗАПУСК/ОСТАНОВКА АГЕНТА
-        // ============================================================
+        function updateChatStatusFull(running) {
+            isAgentRunning = running;
+            updateChatStatusUI(running);
+
+            if (selectedAgentName) {
+                agentStatuses.set(selectedAgentName, running);
+                loadAgents();
+            }
+        }
 
         async function startAgent() {
             if (!selectedAgentName) return;
 
             try {
-                await apiPost(`/${encodeURIComponent(selectedAgentName)}/start`);
-                showToast('Агент запущен', 'success');
-                updateChatStatus(true);
+                const response = await apiPost(`/${encodeURIComponent(selectedAgentName)}/start`);
 
-                // ✅ ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ ОТ АГЕНТА
-                addMessageToChat('agent', '👋 Привет! Я готов к работе. Задайте мне вопрос.');
+                showToast('Агент запущен', 'success');
+                updateChatStatusFull(true);
+
+                if (typeof response === 'string') {
+                    addMessageToChat('agent', response);
+                } else if (response && response.message) {
+                    addMessageToChat('agent', response.message);
+                } else {
+                    addMessageToChat('agent', '✅ Агент запущен');
+                }
 
                 await connectSignalR();
             } catch (err) {
@@ -1385,7 +1427,7 @@
             try {
                 await apiPost(`/${encodeURIComponent(selectedAgentName)}/stop`);
                 showToast('Агент остановлен', 'info');
-                updateChatStatus(false);
+                updateChatStatusFull(false);
                 addMessageToChat('system', '⏹ Агент остановлен');
 
                 if (connection) {
@@ -1401,17 +1443,12 @@
             }
         }
 
-        // ============================================================
-        // 8. ОТПРАВКА СООБЩЕНИЙ
-        // ============================================================
-
         async function sendMessage() {
             const input = document.getElementById('chatInput');
             const message = input.value.trim();
 
             if (!message || !isAgentRunning || !selectedAgentName) return;
 
-            // ✅ 1. ДОБАВЛЯЕМ СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЯ (тип 'user')
             addMessageToChat('user', message);
 
             input.value = '';
@@ -1420,24 +1457,21 @@
             showTyping();
 
             try {
-                // 2. ОТПРАВЛЯЕМ КОМАНДУ
                 const response = await apiPost(`/${encodeURIComponent(selectedAgentName)}/command`, {
                     command: message
                 });
 
-                // 3. СКРЫВАЕМ ИНДИКАТОР ПЕЧАТАНИЯ
                 hideTyping();
 
-                // 4. ДОБАВЛЯЕМ ОТВЕТ АГЕНТА (тип 'agent')
+                let agentResponse = '✅ Команда принята';
                 if (typeof response === 'string') {
-                    addMessageToChat('agent', response);
+                    agentResponse = response;
                 } else if (response && response.message) {
-                    addMessageToChat('agent', response.message);
-                } else {
-                    addMessageToChat('agent', '✅ Команда принята');
+                    agentResponse = response.message;
                 }
 
-                // 5. ВКЛЮЧАЕМ ВВОД
+                addMessageToChat('agent', agentResponse);
+
                 input.disabled = false;
                 document.getElementById('btnSend').disabled = false;
                 input.focus();
@@ -1450,10 +1484,6 @@
                 document.getElementById('btnSend').disabled = false;
             }
         }
-
-        // ============================================================
-        // 9. SIGNALR
-        // ============================================================
 
         async function connectSignalR() {
             if (connection && connection.state === 'Connected') return;
@@ -1487,36 +1517,25 @@
                 });
 
                 await connection.start();
-                console.log('SignalR connected');
 
             } catch (err) {
-                console.error('SignalR error:', err);
                 startPolling();
             }
         }
-
-        // ============================================================
-        // 10. POLLING (fallback)
-        // ============================================================
 
         function startPolling() {
             if (pollingInterval) clearInterval(pollingInterval);
             pollingInterval = setInterval(async () => {
                 if (!selectedAgentName || !isAgentRunning) return;
                 try {
-                    // Можно добавить polling для новых сообщений
+
                 } catch (err) { /* ignore */ }
             }, 2000);
         }
 
-        // ============================================================
-        // 11. ОТОБРАЖЕНИЕ СООБЩЕНИЙ (УПРОЩЁННАЯ ВЕРСИЯ)
-        // ============================================================
-
         function addMessageToChat(type, content, timestamp = null) {
             const container = document.getElementById('messagesContainer');
 
-            // Если в контейнере только индикатор загрузки - удаляем его
             const loadingMsg = container.querySelector('.message.system .message-bubble');
             if (loadingMsg && loadingMsg.textContent.includes('Загрузка')) {
                 container.innerHTML = '';
@@ -1550,7 +1569,6 @@
                             </div>
                         `;
 
-            // Вставляем перед кнопкой "Загрузить ещё", если она есть
             const loadBtn = document.getElementById('loadMoreBtn');
             if (loadBtn) {
                 container.insertBefore(div, loadBtn);
@@ -1590,9 +1608,38 @@
             if (el) el.remove();
         }
 
-        // ============================================================
-        // 12. МОДАЛЬНОЕ ОКНО
-        // ============================================================
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                            <span>${escapeHtml(message)}</span>
+                            <button class="toast-close" onclick="this.closest('.toast').remove()">✕</button>
+                        `;
+
+            document.body.appendChild(toast);
+
+            const timer = setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.style.opacity = '0';
+                    toast.style.transition = 'opacity 0.3s';
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, 5000);
+
+            toast.addEventListener('mouseenter', () => clearTimeout(timer));
+            toast.addEventListener('mouseleave', () => {
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.style.opacity = '0';
+                        toast.style.transition = 'opacity 0.3s';
+                        setTimeout(() => toast.remove(), 300);
+                    }
+                }, 3000);
+            });
+        }
 
         function openCreateModal() {
             document.getElementById('createModal').classList.add('open');
@@ -1631,10 +1678,6 @@
             }
         }
 
-        // ============================================================
-        // 13. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-        // ============================================================
-
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
@@ -1651,26 +1694,6 @@
                 document.head.appendChild(script);
             });
         }
-
-        function showToast(message, type = 'info') {
-            const existing = document.querySelector('.toast');
-            if (existing) existing.remove();
-
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transition = 'opacity 0.3s';
-                setTimeout(() => toast.remove(), 300);
-            }, 4000);
-        }
-
-        // ============================================================
-        // 14. ЗАПУСК
-        // ============================================================
 
         document.addEventListener('DOMContentLoaded', () => {
             loadAgents();

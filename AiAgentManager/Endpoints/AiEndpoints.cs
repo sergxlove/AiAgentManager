@@ -82,6 +82,7 @@ namespace AiAgentManager.Endpoints
 
             app.MapPost("/api/agents/{name}/start", async (string name,
                 [FromServices] ISavedAgentsRepository repo,
+                [FromServices] IChatHistoryRepository chatRepo,
                 CancellationToken token) =>
             {
                 try
@@ -89,7 +90,10 @@ namespace AiAgentManager.Endpoints
                     var result = await repo.GetByNameAsync(name, token);
                     if (result is null)
                         return Results.BadRequest("no found object");
-                    return Results.Ok(new { message = $"Агент '{result.Name}' запущен" });
+                    string response = $"Привет, {result.Name} готов к работе. Напишите ваш запрос :)";
+                    var historyAgent = ChatHistory.Create(Guid.NewGuid(), result.Id, "agent", response,
+                        DateTime.UtcNow);
+                    return Results.Ok(response);
                 }
                 catch
                 {
