@@ -2,7 +2,7 @@
 {
     public class GetHistoryRequest
     {
-        public Guid ChatId { get; set; }
+        public string ChatName { get; set; } = string.Empty;
         public int Offset { get; set; }
     }
 }

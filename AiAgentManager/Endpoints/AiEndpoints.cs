@@ -2,7 +2,6 @@
 using AiAgentManager.DataBase.Sqlite.Interfaces;
 using AiAgentManager.Requests;
 using Microsoft.AspNetCore.Mvc;
-using System.Reflection.Metadata.Ecma335;
 
 namespace AiAgentManager.Endpoints
 {
@@ -116,7 +115,9 @@ namespace AiAgentManager.Endpoints
             });
 
             app.MapPost("/api/agents/{name}/command", async (string name,
+                [FromBody] CommandRequest request,
                 [FromServices] ISavedAgentsRepository repo,
+                [FromServices] IChatHistoryRepository chatRepo,
                 CancellationToken token) =>
             {
                 try
@@ -124,7 +125,18 @@ namespace AiAgentManager.Endpoints
                     var result = await repo.GetByNameAsync(name, token);
                     if (result is null)
                         return Results.BadRequest("no found object");
-                    return Results.Ok(new { message = $"Агент '{result.Name}' принял команду" });
+                    var historyUser = ChatHistory.Create(Guid.NewGuid(), result.Id, "user", request.Command,
+                        DateTime.UtcNow);
+                    if (!string.IsNullOrEmpty(historyUser.Error))
+                        return Results.BadRequest(historyUser.Error);
+                    await chatRepo.AddAsync(historyUser.Value, token);
+                    string response = $"Агент '{result.Name}' принял команду";
+                    var historyAgent = ChatHistory.Create(Guid.NewGuid(), result.Id, "agent", response,
+                        DateTime.UtcNow);
+                    if (!string.IsNullOrEmpty(historyAgent.Error))
+                        return Results.BadRequest(historyAgent.Error);
+                    await chatRepo.AddAsync(historyAgent.Value, token);
+                    return Results.Ok(response);
                 }
                 catch
                 {
@@ -134,11 +146,15 @@ namespace AiAgentManager.Endpoints
 
             app.MapPost("/api/agents/history", async ([FromBody] GetHistoryRequest request,
                 [FromServices] IChatHistoryRepository repo,
+                [FromServices] ISavedAgentsRepository agentsRepo,
                 CancellationToken token) =>
             {
                 try
                 {
-                    var result = await repo.GetByPaginationAsync(request.ChatId, 50, request.Offset, token);
+                    var agents = await agentsRepo.GetByNameAsync(request.ChatName, token);
+                    if (agents is null)
+                        return Results.BadRequest("no found object");
+                    var result = await repo.GetByPaginationAsync(agents.Id, 50, request.Offset, token);
                     if (result is null)
                         return Results.BadRequest("no found object");
                     return Results.Ok(result);
