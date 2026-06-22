@@ -1,5 +1,6 @@
 ﻿using AiAgentManager.Core.Models;
 using AiAgentManager.DataBase.Sqlite.Interfaces;
+using AiAgentManager.Models;
 using AiAgentManager.Requests;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +8,8 @@ namespace AiAgentManager.Endpoints
 {
     public static class AiEndpoints
     {
+        private static readonly Dictionary<string, AgentProcess> _processes = new();
+        private static readonly object _lock = new();
         public static IEndpointRouteBuilder MapAiEndpoints(this IEndpointRouteBuilder app)
         {
             app.MapGet("/api/agents", async ([FromServices] ISavedAgentsRepository repo,
@@ -49,6 +52,8 @@ namespace AiAgentManager.Endpoints
                     var exists = await repo.CheckAsync(request.Name, token);
                     if (exists)
                         return Results.BadRequest($"Агент с именем '{request.Name}' уже существует");
+                    if (!File.Exists(request.PathExe))
+                        return Results.BadRequest("Не найден файл агента .exe");
                     var agent = SavedAgents.Create(Guid.NewGuid(), request.Name, request.PathExe);
                     if (!string.IsNullOrEmpty(agent.Error))
                         return Results.BadRequest(agent.Error);
@@ -69,6 +74,7 @@ namespace AiAgentManager.Endpoints
             {
                 try
                 {
+                    AgentTools.StopAgentInternal(_processes, _lock, name);
                     var result = await repo.DeleteAsync(name, token);
                     if (result == 0)
                         return Results.InternalServerError();
@@ -89,7 +95,12 @@ namespace AiAgentManager.Endpoints
                 {
                     var result = await repo.GetByNameAsync(name, token);
                     if (result is null)
-                        return Results.BadRequest("no found object");
+                        return Results.BadRequest($"Агент с именем {name} не нйден");
+                    if (AgentTools.IsAgentRunning(_processes, _lock, name))
+                        return Results.BadRequest($"Агент '{name}' уже запущен");
+                    var success = AgentTools.StartAgentProcess(_processes, _lock, name, result.PathExe);
+                    if (!success)
+                        return Results.InternalServerError("Не удалось запустить агента");
                     string response = $"Привет, {result.Name} готов к работе. Напишите ваш запрос :)";
                     var historyAgent = ChatHistory.Create(Guid.NewGuid(), result.Id, "agent", response,
                         DateTime.UtcNow);
@@ -109,8 +120,9 @@ namespace AiAgentManager.Endpoints
                 {
                     var result = await repo.GetByNameAsync(name, token);
                     if (result is null)
-                        return Results.BadRequest("no found object");
-                    return Results.Ok(new { message = $"Агент '{result.Name}' остановлен" });
+                        return Results.BadRequest($"Агент с именем {name} не нйден");
+                    AgentTools.StopAgentInternal(_processes, _lock, name);
+                    return Results.Ok();
                 }
                 catch
                 {
@@ -128,13 +140,16 @@ namespace AiAgentManager.Endpoints
                 {
                     var result = await repo.GetByNameAsync(name, token);
                     if (result is null)
-                        return Results.BadRequest("no found object");
+                        return Results.BadRequest($"Агент с именем {name} не нйден");
+                    if (!AgentTools.IsAgentRunning(_processes, _lock, name))
+                        return Results.BadRequest($"Агент '{name}' не запущен. Запустите его сначала.");
                     var historyUser = ChatHistory.Create(Guid.NewGuid(), result.Id, "user", request.Command,
                         DateTime.UtcNow);
                     if (!string.IsNullOrEmpty(historyUser.Error))
                         return Results.BadRequest(historyUser.Error);
                     await chatRepo.AddAsync(historyUser.Value, token);
-                    string response = $"Агент '{result.Name}' принял команду";
+                    var response = await AgentTools.SendCommandAndGetResponse(_processes, _lock, 
+                        name, request.Command);
                     var historyAgent = ChatHistory.Create(Guid.NewGuid(), result.Id, "agent", response,
                         DateTime.UtcNow);
                     if (!string.IsNullOrEmpty(historyAgent.Error))
@@ -157,10 +172,10 @@ namespace AiAgentManager.Endpoints
                 {
                     var agents = await agentsRepo.GetByNameAsync(request.ChatName, token);
                     if (agents is null)
-                        return Results.BadRequest("no found object");
+                        return Results.BadRequest($"Агент не нйден");
                     var result = await repo.GetByPaginationAsync(agents.Id, 50, request.Offset, token);
                     if (result is null)
-                        return Results.BadRequest("no found object");
+                        return Results.BadRequest("История чата не найдена");
                     return Results.Ok(result);
                 }
                 catch
@@ -177,7 +192,7 @@ namespace AiAgentManager.Endpoints
                 {
                     int resultDelete = await repo.DeleteAsync(chatId, token);
                     if (resultDelete == 0)
-                        return Results.BadRequest("object no has been deleted");
+                        return Results.BadRequest("Не удалось удалить чат");
                     return Results.Ok();
                 }
                 catch
